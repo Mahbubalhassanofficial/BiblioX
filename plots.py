@@ -62,28 +62,34 @@ def barh_series(series, xlabel="Count", ylabel="", size_key="single", color=None
     _stamp(fig)
     return fig
 
-def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single"):
-    """Robust line chart: flattens input, handles NaN, sorts by X."""
+def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", color=None):
+    """Robust publication trend line chart with auto-cleaning and sorting."""
     import numpy as np
+    import pandas as pd
     import seaborn as sns
 
-    # Ensure 1D arrays
-    x = np.ravel(x)
-    y = np.ravel(y)
+    # --- Ensure 1D arrays ---
+    x = pd.Series(x).astype(str).replace("nan", np.nan)
+    y = pd.Series(y).astype(float)
 
-    # Remove NaN or malformed entries
-    mask = (~pd.isna(x)) & (~pd.isna(y))
-    x, y = x[mask], y[mask]
+    # --- Drop invalid rows ---
+    valid = (~x.isna()) & (~y.isna())
+    x = x[valid].astype(float, errors="ignore")
+    y = y[valid]
 
-    # Sort by X (if year-like)
+    # --- Try to sort by X (year) if numeric ---
     try:
-        order = np.argsort(x.astype(float))
-        x, y = x[order], y[order]
+        order = np.argsort(pd.to_numeric(x, errors="coerce"))
+        x, y = np.array(x)[order], np.array(y)[order]
     except Exception:
-        pass
+        x, y = np.array(x), np.array(y)
 
+    # --- Plot ---
     fig, ax = _fig(size_key)
-    sns.lineplot(x=x, y=y, ax=ax, marker="o", linewidth=1.5)
+    c = color or current_palette(1)[0]
+    sns.lineplot(x=x, y=y, ax=ax, marker="o", linewidth=1.6, color=c)
+
+    # --- Formatting ---
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     for spine in ["top", "right"]:
@@ -91,6 +97,7 @@ def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single"):
     ax.tick_params(length=2, width=0.6)
     _stamp(fig)
     return fig
+
 
 
 def dual_axis_line(df, x_col, y1_col, y2_col, y1_label, y2_label, size_key="single"):
