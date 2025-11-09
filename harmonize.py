@@ -47,9 +47,9 @@ def harmonize_wos(df: pd.DataFrame):
 
 def merge_and_dedupe(dfs):
     df = pd.concat(dfs, ignore_index=True)
-    if "doi" in df and df["doi"].notna().any():
+    if "doi" in df and df["doi"].astype(str).str.len().gt(0).any():
         with_doi = df[df["doi"].astype(str).str.len()>0]
-        no_doi = df[~df.index.isin(with_doi.index)]
+        no_doi   = df[~df.index.isin(with_doi.index)]
         df = pd.concat([
             with_doi.drop_duplicates(subset=["doi"], keep="first"),
             no_doi.drop_duplicates(subset=["title","year"], keep="first")
