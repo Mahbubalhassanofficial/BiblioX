@@ -37,31 +37,56 @@ def _stamp(fig):
     fig.text(0.99, 0.005, CREDIT, ha="right", va="bottom", fontsize=6, color="#777777")
 
 def _safe_series(series):
-    """Ensure non-empty numeric series."""
-    if isinstance(series, pd.Series):
-        series = series.dropna()
-        if len(series) == 0:
-            raise ValueError("Empty series — cannot plot.")
-        return series
-    raise TypeError("Input must be pandas Series.")
+    """Ensure non-empty numeric series; return empty placeholder instead of raising."""
+    import pandas as pd
 
+    if not isinstance(series, pd.Series):
+        # Return an empty placeholder Series
+        return pd.Series(dtype=float)
+
+    series = series.dropna()
+    if series.empty:
+        # Return placeholder instead of raising
+        return pd.Series(dtype=float)
+
+    return series
 # ============================================================
 # 2. MATPLOTLIB / SEABORN EXPORTABLE PLOTS
 # ============================================================
 def barh_series(series, xlabel="Count", ylabel="", size_key="single", color=None):
-    """Publication-grade horizontal bar chart."""
-    s = _safe_series(series).sort_values(ascending=True)
+    """Safe horizontal bar plot that handles missing/empty data gracefully."""
+    import pandas as pd
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    s = _safe_series(series)
+
+    # If truly empty, show a friendly message instead of crashing
+    if s.empty:
+        fig, ax = _fig(size_key)
+        ax.text(
+            0.5, 0.5, "⚠️ No valid data available for this chart",
+            ha="center", va="center", fontsize=9
+        )
+        ax.axis("off")
+        _stamp(fig)
+        return fig
+        # Normal plotting pipeline
+    s = s.sort_values(ascending=True)
     fig, ax = _fig(size_key)
     c = color or current_palette(1)[0]
     sns.barplot(x=s.values, y=s.index, ax=ax, color=c, edgecolor="black")
-    ax.set_xlabel(xlabel); ax.set_ylabel(ylabel)
-    for spine in ["top", "right"]: ax.spines[spine].set_visible(False)
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
     ax.tick_params(length=2, width=0.6)
     for i, v in enumerate(s.values):
-        ax.text(v + max(s.values)*0.01, i, f"{int(v)}", va="center", fontsize=8)
+        ax.text(v + max(s.values) * 0.01, i, f"{int(v)}", va="center", fontsize=8)
     _stamp(fig)
     return fig
-
 def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", color=None):
     """Final robust publication trend line chart (safe for Streamlit Cloud)."""
     import numpy as np
