@@ -32,3 +32,24 @@ def line_with_markers(x, y, xlabel="", ylabel="", size_key="single"):
     for spine in ["top","right"]: ax.spines[spine].set_visible(False)
     stamp_credit(fig)
     return fig
+import seaborn as sns
+import matplotlib.pyplot as plt
+from styles import mm_to_inches, FIG_SIZES_MM
+
+def line_trend(df, x, y, hue=None, size_key="single"):
+    wmm,hmm = FIG_SIZES_MM[size_key]
+    fig, ax = plt.subplots(figsize=(mm_to_inches(wmm), mm_to_inches(hmm)))
+    sns.lineplot(data=df, x=x, y=y, hue=hue, marker="o", ax=ax, linewidth=1.5)
+    for spine in ["top","right"]: ax.spines[spine].set_visible(False)
+    ax.set_xlabel(x); ax.set_ylabel(y)
+    ax.tick_params(length=2, width=0.6)
+    stamp_credit(fig)
+    return fig
+
+def bar_rank(df, x, y, size_key="single", orient="h"):
+    wmm,hmm = FIG_SIZES_MM[size_key]
+    fig, ax = plt.subplots(figsize=(mm_to_inches(wmm), mm_to_inches(hmm)))
+    sns.barplot(data=df, x=x, y=y, ax=ax, orient=orient, edgecolor="black")
+    for spine in ["top","right"]: ax.spines[spine].set_visible(False)
+    stamp_credit(fig)
+    return fig
