@@ -79,25 +79,33 @@ def barh_series(series, xlabel="Count", ylabel="", size_key="single", color=None
 
 
 def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", color=None):
-    """Final robust publication trend line chart (safe for Streamlit Cloud)."""
+    """Final bulletproof publication trend line chart (safe for any array shape)."""
     import numpy as np
     import pandas as pd
     import seaborn as sns
     import matplotlib.pyplot as plt
 
-    # --- Convert inputs to Series for safety ---
-    x = pd.Series(x).astype(str).replace("nan", np.nan)
-    y = pd.Series(y)
+    # --- Flatten all possible inputs (handles 2D arrays, lists, or Series) ---
+    x = np.array(x).reshape(-1)
+    y = np.array(y).reshape(-1)
 
-    # --- Coerce both to numeric (non-numeric → NaN) ---
+    # --- Handle completely empty inputs ---
+    if len(x) == 0 or len(y) == 0:
+        fig, ax = _fig(size_key)
+        ax.text(0.5, 0.5, "⚠️ No valid data for line chart", ha="center", va="center", fontsize=9)
+        ax.axis("off")
+        _stamp(fig)
+        return fig
+
+    # --- Convert both to numeric (non-numeric → NaN) ---
     x = pd.to_numeric(x, errors="coerce")
     y = pd.to_numeric(y, errors="coerce")
 
-    # --- Drop missing or invalid rows ---
-    valid_mask = np.isfinite(x.values) & np.isfinite(y.values)
+    # --- Drop invalid pairs (NaN, inf, etc.) ---
+    valid_mask = np.isfinite(x) & np.isfinite(y)
     x, y = x[valid_mask], y[valid_mask]
 
-    # --- If no valid data, show friendly placeholder ---
+    # --- If still empty, show fallback message ---
     if len(x) == 0 or len(y) == 0:
         fig, ax = _fig(size_key)
         ax.text(0.5, 0.5, "⚠️ No valid numeric data to plot", ha="center", va="center", fontsize=9)
@@ -105,26 +113,25 @@ def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", co
         _stamp(fig)
         return fig
 
-    # --- Sort data by X (if numeric) ---
+    # --- Sort data by x (if numeric) ---
     try:
         order = np.argsort(x)
-        x, y = x.iloc[order], y.iloc[order]
+        x, y = x[order], y[order]
     except Exception:
         pass
 
-    # --- Create figure ---
+    # --- Plot ---
     fig, ax = _fig(size_key)
     c = color or current_palette(1)[0]
     sns.lineplot(x=x, y=y, ax=ax, marker="o", linewidth=1.6, color=c)
 
-    # --- Labels & Styling ---
+    # --- Style ---
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     for spine in ["top", "right"]:
         ax.spines[spine].set_visible(False)
     ax.tick_params(length=2, width=0.6)
     _stamp(fig)
-
     return fig
 
 
