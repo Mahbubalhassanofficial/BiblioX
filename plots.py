@@ -62,16 +62,36 @@ def barh_series(series, xlabel="Count", ylabel="", size_key="single", color=None
     _stamp(fig)
     return fig
 
-def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", color=None):
-    """Line plot for yearly trends."""
+def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single"):
+    """Robust line chart: flattens input, handles NaN, sorts by X."""
+    import numpy as np
+    import seaborn as sns
+
+    # Ensure 1D arrays
+    x = np.ravel(x)
+    y = np.ravel(y)
+
+    # Remove NaN or malformed entries
+    mask = (~pd.isna(x)) & (~pd.isna(y))
+    x, y = x[mask], y[mask]
+
+    # Sort by X (if year-like)
+    try:
+        order = np.argsort(x.astype(float))
+        x, y = x[order], y[order]
+    except Exception:
+        pass
+
     fig, ax = _fig(size_key)
-    c = color or current_palette(1)[0]
-    sns.lineplot(x=x, y=y, ax=ax, marker="o", linewidth=1.5, color=c)
-    ax.set_xlabel(xlabel); ax.set_ylabel(ylabel)
-    for spine in ["top","right"]: ax.spines[spine].set_visible(False)
+    sns.lineplot(x=x, y=y, ax=ax, marker="o", linewidth=1.5)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
     ax.tick_params(length=2, width=0.6)
     _stamp(fig)
     return fig
+
 
 def dual_axis_line(df, x_col, y1_col, y2_col, y1_label, y2_label, size_key="single"):
     """Dual-axis line plot (e.g., publications vs citations)."""
