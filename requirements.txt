@@ -12,4 +12,3 @@ scikit-learn
 pillow
 chardet
 scienceplots
-rpy2
