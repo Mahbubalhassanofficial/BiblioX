@@ -63,30 +63,38 @@ def barh_series(series, xlabel="Count", ylabel="", size_key="single", color=None
     return fig
 
 def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", color=None):
-    """Robust publication trend line chart with full safety for nested arrays."""
+    """Final robust publication trend line chart (safe for Streamlit Cloud)."""
     import numpy as np
     import pandas as pd
     import seaborn as sns
 
-    # --- Flatten and sanitize input ---
-    x = np.ravel(np.array(x))
-    y = np.ravel(np.array(y))
+    # --- Force numpy arrays ---
+    x = np.array(x).flatten()
+    y = np.array(y).flatten()
 
-    # --- Convert to numeric when possible ---
+    # --- Handle empty or invalid arrays ---
+    if len(x) == 0 or len(y) == 0:
+        raise ValueError("Empty input to line_trend()")
+
+    # --- Convert to numeric if possible ---
     try:
         x = pd.to_numeric(x, errors="coerce")
     except Exception:
-        pass
+        x = np.array(x)
     try:
         y = pd.to_numeric(y, errors="coerce")
     except Exception:
-        pass
+        y = np.array(y)
 
-    # --- Drop invalid (NaN) values ---
-    mask = (~pd.isna(x)) & (~pd.isna(y))
+    # --- Ensure same length ---
+    n = min(len(x), len(y))
+    x, y = x[:n], y[:n]
+
+    # --- Drop NaN values robustly ---
+    mask = np.isfinite(x) & np.isfinite(y)
     x, y = x[mask], y[mask]
 
-    # --- Sort by X (Year) if numeric ---
+    # --- Sort by X (if numeric) ---
     try:
         order = np.argsort(x.astype(float))
         x, y = x[order], y[order]
