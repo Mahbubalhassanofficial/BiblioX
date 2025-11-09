@@ -63,33 +63,42 @@ def barh_series(series, xlabel="Count", ylabel="", size_key="single", color=None
     return fig
 
 def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", color=None):
-    """Robust publication trend line chart with auto-cleaning and sorting."""
+    """Robust publication trend line chart with full safety for nested arrays."""
     import numpy as np
     import pandas as pd
     import seaborn as sns
 
-    # --- Ensure 1D arrays ---
-    x = pd.Series(x).astype(str).replace("nan", np.nan)
-    y = pd.Series(y).astype(float)
+    # --- Flatten and sanitize input ---
+    x = np.ravel(np.array(x))
+    y = np.ravel(np.array(y))
 
-    # --- Drop invalid rows ---
-    valid = (~x.isna()) & (~y.isna())
-    x = x[valid].astype(float, errors="ignore")
-    y = y[valid]
-
-    # --- Try to sort by X (year) if numeric ---
+    # --- Convert to numeric when possible ---
     try:
-        order = np.argsort(pd.to_numeric(x, errors="coerce"))
-        x, y = np.array(x)[order], np.array(y)[order]
+        x = pd.to_numeric(x, errors="coerce")
     except Exception:
-        x, y = np.array(x), np.array(y)
+        pass
+    try:
+        y = pd.to_numeric(y, errors="coerce")
+    except Exception:
+        pass
+
+    # --- Drop invalid (NaN) values ---
+    mask = (~pd.isna(x)) & (~pd.isna(y))
+    x, y = x[mask], y[mask]
+
+    # --- Sort by X (Year) if numeric ---
+    try:
+        order = np.argsort(x.astype(float))
+        x, y = x[order], y[order]
+    except Exception:
+        pass
 
     # --- Plot ---
     fig, ax = _fig(size_key)
     c = color or current_palette(1)[0]
     sns.lineplot(x=x, y=y, ax=ax, marker="o", linewidth=1.6, color=c)
 
-    # --- Formatting ---
+    # --- Style ---
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     for spine in ["top", "right"]:
@@ -97,8 +106,6 @@ def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", co
     ax.tick_params(length=2, width=0.6)
     _stamp(fig)
     return fig
-
-
 
 def dual_axis_line(df, x_col, y1_col, y2_col, y1_label, y2_label, size_key="single"):
     """Dual-axis line plot (e.g., publications vs citations)."""
