@@ -80,42 +80,51 @@ def barh_series(series, xlabel="Count", ylabel="", size_key="single", color=None
 
 def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", color=None):
     """Final robust publication trend line chart (safe for Streamlit Cloud)."""
-    x = np.array(x).flatten()
-    y = np.array(y).flatten()
+    import numpy as np
+    import pandas as pd
+    import seaborn as sns
+    import matplotlib.pyplot as plt
 
-    if len(x) == 0 or len(y) == 0:
-        fig, ax = _fig(size_key)
-        ax.text(0.5, 0.5, "⚠️ No valid data for line chart", ha="center", va="center", fontsize=9)
-        ax.axis("off")
-        return fig
+    # --- Convert inputs to Series for safety ---
+    x = pd.Series(x).astype(str).replace("nan", np.nan)
+    y = pd.Series(y)
 
-    # Convert to numeric
+    # --- Coerce both to numeric (non-numeric → NaN) ---
     x = pd.to_numeric(x, errors="coerce")
     y = pd.to_numeric(y, errors="coerce")
-    mask = np.isfinite(x) & np.isfinite(y)
-    x, y = x[mask], y[mask]
-    if len(x) == 0:
+
+    # --- Drop missing or invalid rows ---
+    valid_mask = np.isfinite(x.values) & np.isfinite(y.values)
+    x, y = x[valid_mask], y[valid_mask]
+
+    # --- If no valid data, show friendly placeholder ---
+    if len(x) == 0 or len(y) == 0:
         fig, ax = _fig(size_key)
-        ax.text(0.5, 0.5, "⚠️ No numeric values available", ha="center", va="center", fontsize=9)
+        ax.text(0.5, 0.5, "⚠️ No valid numeric data to plot", ha="center", va="center", fontsize=9)
         ax.axis("off")
+        _stamp(fig)
         return fig
 
+    # --- Sort data by X (if numeric) ---
     try:
         order = np.argsort(x)
-        x, y = x[order], y[order]
+        x, y = x.iloc[order], y.iloc[order]
     except Exception:
         pass
 
+    # --- Create figure ---
     fig, ax = _fig(size_key)
     c = color or current_palette(1)[0]
     sns.lineplot(x=x, y=y, ax=ax, marker="o", linewidth=1.6, color=c)
 
+    # --- Labels & Styling ---
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     for spine in ["top", "right"]:
         ax.spines[spine].set_visible(False)
     ax.tick_params(length=2, width=0.6)
     _stamp(fig)
+
     return fig
 
 
