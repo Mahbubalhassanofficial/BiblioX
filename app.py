@@ -175,15 +175,23 @@ with tabs[0]:
         st.pyplot(fig)
         download_fig(fig, "top_countries.png")
 
-    st.divider()
-    st.caption("Interactive (Altair):")
-    st.altair_chart(
-        altair_bar(
-            topS.reset_index().rename(columns={"index": "Source", topS.name: "Count"}),
-            "Count", "Source"
-        ),
-        use_container_width=True
-    )
+  st.divider()
+st.caption("Interactive (Altair):")
+
+# --- Safe preparation of top sources data ---
+df_topS = topS.reset_index()
+df_topS.columns = ["Source", "Count"]
+
+# --- Generate Altair chart safely ---
+chart = altair_bar(
+    df_topS,
+    x="Count",
+    y="Source",
+    title="Top Sources (Journals / Proceedings)"
+)
+
+# --- Display in Streamlit ---
+st.altair_chart(chart, use_container_width=True)
 
 # ------------------------------------------------------------
 # TAB 2 — KEYWORDS
