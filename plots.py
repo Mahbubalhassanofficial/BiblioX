@@ -79,33 +79,26 @@ def barh_series(series, xlabel="Count", ylabel="", size_key="single", color=None
 
 
 def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", color=None):
-    """Final bulletproof publication trend line chart (safe for any array shape)."""
+    """Fully safe publication trend chart for Streamlit (handles any input type)."""
     import numpy as np
     import pandas as pd
     import seaborn as sns
     import matplotlib.pyplot as plt
 
-    # --- Flatten all possible inputs (handles 2D arrays, lists, or Series) ---
-    x = np.array(x).reshape(-1)
-    y = np.array(y).reshape(-1)
+    # --- Force everything into flat pandas Series ---
+    x = pd.Series(np.ravel(x))
+    y = pd.Series(np.ravel(y))
 
-    # --- Handle completely empty inputs ---
-    if len(x) == 0 or len(y) == 0:
-        fig, ax = _fig(size_key)
-        ax.text(0.5, 0.5, "⚠️ No valid data for line chart", ha="center", va="center", fontsize=9)
-        ax.axis("off")
-        _stamp(fig)
-        return fig
-
-    # --- Convert both to numeric (non-numeric → NaN) ---
+    # --- Convert both to numeric safely (non-numeric → NaN) ---
     x = pd.to_numeric(x, errors="coerce")
     y = pd.to_numeric(y, errors="coerce")
 
-    # --- Drop invalid pairs (NaN, inf, etc.) ---
-    valid_mask = np.isfinite(x) & np.isfinite(y)
-    x, y = x[valid_mask], y[valid_mask]
+    # --- Drop invalid (NaN/inf) entries ---
+    valid = x.notna() & y.notna() & np.isfinite(x) & np.isfinite(y)
+    x = x[valid]
+    y = y[valid]
 
-    # --- If still empty, show fallback message ---
+    # --- If no valid points remain, show placeholder chart ---
     if len(x) == 0 or len(y) == 0:
         fig, ax = _fig(size_key)
         ax.text(0.5, 0.5, "⚠️ No valid numeric data to plot", ha="center", va="center", fontsize=9)
@@ -113,10 +106,10 @@ def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", co
         _stamp(fig)
         return fig
 
-    # --- Sort data by x (if numeric) ---
+    # --- Sort by x (if numeric) ---
     try:
-        order = np.argsort(x)
-        x, y = x[order], y[order]
+        order = np.argsort(x.values)
+        x, y = x.iloc[order], y.iloc[order]
     except Exception:
         pass
 
@@ -132,6 +125,7 @@ def line_trend(x, y, xlabel="Year", ylabel="Publications", size_key="single", co
         ax.spines[spine].set_visible(False)
     ax.tick_params(length=2, width=0.6)
     _stamp(fig)
+
     return fig
 
 
