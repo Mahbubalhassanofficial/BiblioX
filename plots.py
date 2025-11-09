@@ -154,34 +154,42 @@ def save_figure(fig, filename: str | Path, formats=("png", "pdf"), dpi=600):
 # ============================================================
 # 3. ALTAIR INTERACTIVE PREVIEWS
 # ============================================================
-def altair_bar(df, x, y, title="Top Sources (Interactive Preview)"):
-    """Interactive Altair bar chart (Streamlit-safe, schema-compliant)."""
-    import matplotlib.pyplot as plt
+def altair_bar(df, x, y, title=None):
+    """Interactive bar chart for quick preview — safe for Streamlit."""
+    import pandas as pd
+    import altair as alt
 
-    if df is None or df.empty:
-        fig, ax = plt.subplots(figsize=(5, 2))
-        ax.text(0.5, 0.5, "⚠️ No data for Altair chart", ha="center", va="center", fontsize=10)
-        ax.axis("off")
-        return fig
+    # --- Defensive Checks ---
+    if df is None or len(df) == 0:
+        return alt.Chart(pd.DataFrame({"Message": ["⚠️ No data available"]})).mark_text(
+            text="⚠️ No data available",
+            size=18, color="red", align="center"
+        )
 
-    df = df.copy()
-    df.columns = [str(c) for c in df.columns]
-
+    # Ensure columns exist
     if x not in df.columns or y not in df.columns:
-        fig, ax = plt.subplots(figsize=(5, 2))
-        ax.text(0.5, 0.5, f"⚠️ Columns '{x}' or '{y}' missing", ha="center", va="center", fontsize=9)
-        ax.axis("off")
-        return fig
+        return alt.Chart(pd.DataFrame({"Message": ["⚠️ Invalid columns for plotting"]})).mark_text(
+            text="⚠️ Invalid columns for plotting",
+            size=18, color="red", align="center"
+        )
 
-    df[x] = pd.to_numeric(df[x], errors="coerce")
-    df[y] = df[y].astype(str)
-    df = df.dropna(subset=[x])
-    if df.empty:
-        fig, ax = plt.subplots(figsize=(5, 2))
-        ax.text(0.5, 0.5, "⚠️ No valid numeric data", ha="center", va="center", fontsize=9)
-        ax.axis("off")
-        return fig
+    # --- Ensure numeric x if possible ---
+    try:
+        df[x] = pd.to_numeric(df[x], errors="ignore")
+    except Exception:
+        pass
 
+    # --- Drop NA values safely ---
+    df = df.dropna(subset=[x, y])
+
+    # --- If still empty after cleaning ---
+    if len(df) == 0:
+        return alt.Chart(pd.DataFrame({"Message": ["⚠️ No valid entries after cleaning"]})).mark_text(
+            text="⚠️ No valid entries after cleaning",
+            size=16, color="orange", align="center"
+        )
+
+    # --- Build Chart ---
     chart = (
         alt.Chart(df)
         .mark_bar(color=current_palette(1)[0])
@@ -190,11 +198,12 @@ def altair_bar(df, x, y, title="Top Sources (Interactive Preview)"):
             y=alt.Y(y, sort='-x', title=y),
             tooltip=[x, y]
         )
-        .properties(width=480, height=340, title=(title or ""))
+        .properties(width=480, height=340, title=title or f"Top {y}")
         .configure_title(font="Times New Roman", fontSize=12, anchor="start")
         .configure_axis(labelFont="Times New Roman", titleFont="Times New Roman")
     )
     return chart
+
 
 
 def altair_line(df, x, y, title="Trend (Interactive Preview)"):
