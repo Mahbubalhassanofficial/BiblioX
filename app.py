@@ -86,20 +86,33 @@ if files:
     for f in files:
         df_raw = cached_read(f)["df"]
         cols = set(df_raw.columns)
+
+        # --- Detect Scopus ---
         if ("Source title" in cols) or ("Cited by" in cols):
             st.success(f"Detected **Scopus**: {f.name} ({len(df_raw)} records)")
             if analysis_mode in ["Scopus Only", "Combined (Scopus + WoS)"]:
                 dfs.append(harmonize_scopus(df_raw))
+
+        # --- Detect Web of Science ---
         elif ("SO" in cols) or ("PY" in cols) or ("AU" in cols):
-            st.success(f"Detected **WoS**: {f.name} ({len(df_raw)} records)")
+            st.success(f"Detected **Web of Science (WoS)**: {f.name} ({len(df_raw)} records)")
             if analysis_mode in ["Web of Science Only", "Combined (Scopus + WoS)"]:
                 dfs.append(harmonize_wos(df_raw))
+
+        # --- Detect Harmonized Bibliometric Data (your custom format) ---
+        elif {"title", "year", "authors"}.issubset(cols):
+            st.success(f"Detected **Harmonized Bibliometric File**: {f.name} ({len(df_raw)} records)")
+            dfs.append(df_raw)
+
+        # --- Unknown format fallback ---
         else:
-            st.warning(f"Unknown format: {f.name}")
+            st.warning(f"⚠️ Unknown format: {f.name}")
+            st.caption("Preview of columns for debugging:")
             st.dataframe(df_raw.head())
 
 if not dfs:
     st.stop()
+
 
 merged = merge_and_dedupe(dfs) if analysis_mode.startswith("Combined") else (dfs[0] if len(dfs) == 1 else pd.concat(dfs))
 st.session_state["merged"] = merged
